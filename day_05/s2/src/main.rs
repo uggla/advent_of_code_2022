@@ -385,25 +385,25 @@ mod tests {
         assert_eq!(answer, "MCD".to_string());
     }
 
-    // #[test]
-    // fn test_parse_big_map() {
-    //     let input = parse_input(Some(indoc!(
-    //         "
-    //                 [H]         [S]         [D]
-    //             [S] [C]         [C]     [Q] [L]
-    //             [C] [R] [Z]     [R]     [H] [Z]
-    //             [G] [N] [H] [S] [B]     [R] [F]
-    //         [D] [T] [Q] [F] [Q] [Z]     [Z] [N]
-    //         [Z] [W] [F] [N] [F] [W] [J] [V] [G]
-    //         [T] [R] [B] [C] [L] [P] [F] [L] [H]
-    //         [H] [Q] [P] [L] [G] [V] [Z] [D] [B]
-    //          1   2   3   4   5   6   7   8   9
-    //
-    //         move 2 from 7 to 2
-    //         "
-    //     )));
-    //     dbg!(&input);
-    //     let answer = run(input);
-    //     assert_eq!(answer, "DFHZSSZQD".to_string());
-    // }
+    #[test]
+    fn test_parse_big_map() {
+        let input = parse_input(Some(indoc!(
+            "
+                    [H]         [S]         [D]
+                [S] [C]         [C]     [Q] [L]
+                [C] [R] [Z]     [R]     [H] [Z]
+                [G] [N] [H] [S] [B]     [R] [F]
+            [D] [T] [Q] [F] [Q] [Z]     [Z] [N]
+            [Z] [W] [F] [N] [F] [W] [J] [V] [G]
+            [T] [R] [B] [C] [L] [P] [F] [L] [H]
+            [H] [Q] [P] [L] [G] [V] [Z] [D] [B]
+             1   2   3   4   5   6   7   8   9
+
+            move 2 from 7 to 2
+            "
+        )));
+        dbg!(&input);
+        let answer = run(input);
+        assert_eq!(answer, "DJHZSSZQD".to_string());
+    }
 }
