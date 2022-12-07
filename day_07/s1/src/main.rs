@@ -39,12 +39,32 @@ impl Tree {
     }
 
     fn add_file(&mut self, dir: &str, file: File) {
-        let dir_index = self
-            .directories
+        let dir_index = self.get_dir_index(dir);
+        self.directories[dir_index].files.push(file);
+    }
+
+    fn get_max_level(&self) -> usize {
+        todo!();
+    }
+
+    fn get_sub_directories(&self, dir: &str) -> Vec<&Directory> {
+        self.links
+            .iter()
+            .filter(|o| o.0 == *dir.to_string())
+            .map(|o| self.get_dir(&o.1))
+            .collect()
+    }
+
+    fn get_dir_index(&self, dir: &str) -> usize {
+        self.directories
             .iter()
             .position(|o| o.name == *dir.to_string())
-            .unwrap();
-        self.directories[dir_index].files.push(file);
+            .unwrap()
+    }
+
+    fn get_dir(&self, dir: &str) -> &Directory {
+        let dir_index = self.get_dir_index(dir);
+        &self.directories[dir_index]
     }
 }
 
@@ -186,6 +206,44 @@ mod tests {
         tree.add_file("a", File::new("truc", 12000));
         dbg!(&tree);
         assert_eq!(tree.directories[1].files[0], File::new("truc", 12000));
+    }
+
+    #[test]
+    fn test_directory_get_dir() {
+        let mut tree = Tree::new();
+        let dir1 = Directory::new("/", 0);
+        let dir2 = Directory::new("a", 1);
+        let dir3 = Directory::new("b", 1);
+        tree.directories.push(dir1);
+        tree.directories.push(dir2);
+        tree.directories.push(dir3);
+        dbg!(&tree);
+        assert_eq!(tree.get_dir("b"), &tree.directories[2]);
+    }
+
+    #[test]
+    fn test_directory_get_sub_directories() {
+        let mut tree = Tree::new();
+        let dir1 = Directory::new("/", 0);
+        let dir2 = Directory::new("a", 1);
+        let dir3 = Directory::new("b", 1);
+        let dir4 = Directory::new("c", 2);
+        tree.directories.push(dir1);
+        tree.directories.push(dir2);
+        tree.directories.push(dir3);
+        tree.directories.push(dir4);
+        let link1 = Link::new("/", "a");
+        let link2 = Link::new("/", "b");
+        let link3 = Link::new("b", "c");
+        tree.links.push(link1);
+        tree.links.push(link2);
+        tree.links.push(link3);
+        dbg!(&tree);
+        assert_eq!(
+            tree.get_sub_directories("/"),
+            vec![&tree.directories[1], &tree.directories[2]]
+        );
+        assert_eq!(tree.get_sub_directories("b"), vec![&tree.directories[3]]);
     }
 
     #[test]
