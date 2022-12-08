@@ -145,6 +145,13 @@ impl Link {
     }
 }
 
+fn set_new_dir(current_dir: &mut String, new: &str) {
+    if current_dir != "/" {
+        current_dir.push('/');
+    }
+    current_dir.push_str(new);
+}
+
 fn parse_line(tree: &mut Tree, input: &str, current_dir: &mut String, current_level: &mut usize) {
     let words: Vec<&str> = input.split(' ').collect();
     match words[0].trim() {
@@ -160,8 +167,7 @@ fn parse_line(tree: &mut Tree, input: &str, current_dir: &mut String, current_le
                     *current_level -= 1;
                 }
                 _ => {
-                    current_dir.push('/');
-                    current_dir.push_str(words[2].trim());
+                    set_new_dir(current_dir, words[2].trim());
                     *current_level += 1;
                 }
             },
@@ -170,8 +176,7 @@ fn parse_line(tree: &mut Tree, input: &str, current_dir: &mut String, current_le
         },
         "dir" => {
             let mut dst = current_dir.clone();
-            dst.push('/');
-            dst.push_str(words[1].trim());
+            set_new_dir(&mut dst, words[1].trim());
             let dir = Directory::new(&dst, *current_level + 1);
             tree.directories.push(dir);
             let link = Link::new(current_dir, &dst);
@@ -407,14 +412,14 @@ mod tests {
         assert_eq!(
             tree.directories[1],
             Directory {
-                name: "//a".to_string(),
+                name: "/a".to_string(),
                 level: 1,
                 files: Vec::new(),
                 size: 0
             }
         );
 
-        assert_eq!(tree.links[0], Link("/".to_string(), "//a".to_string()));
+        assert_eq!(tree.links[0], Link("/".to_string(), "/a".to_string()));
     }
 
     #[test]
@@ -443,15 +448,15 @@ mod tests {
         assert_eq!(
             tree.directories[1],
             Directory {
-                name: "//a".to_string(),
+                name: "/a".to_string(),
                 level: 1,
                 files: Vec::new(),
                 size: 0
             }
         );
 
-        assert_eq!(tree.links[0], Link("/".to_string(), "//a".to_string()));
-        assert_eq!(current_dir, "//a".to_string());
+        assert_eq!(tree.links[0], Link("/".to_string(), "/a".to_string()));
+        assert_eq!(current_dir, "/a".to_string());
         assert_eq!(current_level, 1);
     }
 
@@ -483,14 +488,14 @@ mod tests {
         assert_eq!(
             tree.directories[1],
             Directory {
-                name: "//a".to_string(),
+                name: "/a".to_string(),
                 level: 1,
                 files: Vec::new(),
                 size: 0
             }
         );
 
-        assert_eq!(tree.links[0], Link("/".to_string(), "//a".to_string()));
+        assert_eq!(tree.links[0], Link("/".to_string(), "/a".to_string()));
         assert_eq!(current_dir, "/".to_string());
         assert_eq!(current_level, 0);
     }
@@ -532,15 +537,15 @@ mod tests {
         assert_eq!(
             tree.directories[1],
             Directory {
-                name: "//a".to_string(),
+                name: "/a".to_string(),
                 level: 1,
                 files: Vec::new(),
                 size: 0
             }
         );
 
-        assert_eq!(tree.links[0], Link("/".to_string(), "//a".to_string()));
-        assert_eq!(tree.links[1], Link("//a".to_string(), "//a/b".to_string()));
+        assert_eq!(tree.links[0], Link("/".to_string(), "/a".to_string()));
+        assert_eq!(tree.links[1], Link("/a".to_string(), "/a/b".to_string()));
         assert_eq!(current_dir, "/".to_string());
         assert_eq!(current_level, 0);
     }
