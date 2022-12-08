@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 fn parse_input(input: Option<&str>) -> Vec<String> {
     let input = match input {
         None => include_str!("../../input.txt"),
@@ -29,11 +27,13 @@ impl Tree {
         }
     }
 
-    fn find_parent(&self, parent: &str) -> String {
+    fn find_parent(&self, child: &str) -> String {
+        dbg!(child);
+
         let link = self
             .links
             .iter()
-            .find(|&o| o.1 == *parent.to_string())
+            .find(|&o| o.1 == *child.to_string())
             .unwrap();
         link.0.clone()
     }
@@ -44,7 +44,7 @@ impl Tree {
     }
 
     fn get_max_level(&self) -> usize {
-        todo!();
+        self.directories.iter().map(|o| o.level).max().unwrap()
     }
 
     fn get_sub_directories(&self, dir: &str) -> Vec<&Directory> {
@@ -53,6 +53,10 @@ impl Tree {
             .filter(|o| o.0 == *dir.to_string())
             .map(|o| self.get_dir(&o.1))
             .collect()
+    }
+
+    fn get_sub_directories_size(&self, dir: &str) -> usize {
+        self.get_sub_directories(dir).iter().map(|o| o.size).sum()
     }
 
     fn get_dir_index(&self, dir: &str) -> usize {
@@ -65,6 +69,30 @@ impl Tree {
     fn get_dir(&self, dir: &str) -> &Directory {
         let dir_index = self.get_dir_index(dir);
         &self.directories[dir_index]
+    }
+
+    fn calculate_level_sizes(&mut self, level: usize) {
+        let mut dir_subdir_size: Vec<(usize, usize)> = Vec::new();
+        for dir in self.directories.iter_mut().filter(|o| o.level == level) {
+            dir.calculate_file_size();
+        }
+
+        for dir in self.directories.iter().filter(|o| o.level == level) {
+            let subdir_size = self.get_sub_directories_size(&dir.name);
+            let dir_index = self.get_dir_index(&dir.name);
+            dir_subdir_size.push((dir_index, subdir_size));
+        }
+
+        for item in dir_subdir_size {
+            self.directories[item.0].size += item.1;
+        }
+    }
+
+    fn calculate_sizes(&mut self) {
+        let max_level = self.get_max_level();
+        for level in (0..=max_level).rev() {
+            self.calculate_level_sizes(level);
+        }
     }
 }
 
@@ -84,6 +112,10 @@ impl Directory {
             files: Vec::new(),
             size: 0,
         }
+    }
+
+    fn calculate_file_size(&mut self) {
+        self.size = self.files.iter().map(|o| o.size).sum();
     }
 }
 
@@ -126,7 +158,8 @@ fn parse_line(tree: &mut Tree, input: &str, current_dir: &mut String, current_le
                     *current_level -= 1;
                 }
                 _ => {
-                    *current_dir = words[2].trim().to_string();
+                    current_dir.push('/');
+                    current_dir.push_str(words[2].trim());
                     *current_level += 1;
                 }
             },
@@ -134,10 +167,12 @@ fn parse_line(tree: &mut Tree, input: &str, current_dir: &mut String, current_le
             _ => unreachable!(),
         },
         "dir" => {
-            let dst = words[1].trim();
-            let dir = Directory::new(dst, *current_level + 1);
+            let mut dst = current_dir.clone();
+            dst.push('/');
+            dst.push_str(words[1].trim());
+            let dir = Directory::new(&dst, *current_level + 1);
             tree.directories.push(dir);
-            let link = Link::new(current_dir, dst);
+            let link = Link::new(current_dir, &dst);
             tree.links.push(link);
         }
         _ => {
@@ -148,14 +183,20 @@ fn parse_line(tree: &mut Tree, input: &str, current_dir: &mut String, current_le
 }
 
 fn run(input: Vec<String>) -> usize {
+    const MAX_DIRECTORIES_SIZE: usize = 100000;
     let mut tree = Tree::new();
     let mut current_dir = String::new();
     let mut current_level: usize = 0;
     for line in input {
         parse_line(&mut tree, &line, &mut current_dir, &mut current_level)
     }
+    tree.calculate_sizes();
     dbg!(&tree);
-    todo!();
+    tree.directories
+        .iter()
+        .filter(|o| o.size <= MAX_DIRECTORIES_SIZE)
+        .map(|o| o.size)
+        .sum()
 }
 
 fn main() {
@@ -247,6 +288,76 @@ mod tests {
     }
 
     #[test]
+    fn test_directory_get_sub_directories_size() {
+        let mut tree = Tree::new();
+        let dir1 = Directory::new("/", 0);
+        let dir2 = Directory::new("a", 1);
+        let dir3 = Directory::new("b", 1);
+        let dir4 = Directory::new("c", 2);
+        tree.directories.push(dir1);
+        tree.directories.push(dir2);
+        tree.directories.push(dir3);
+        tree.directories.push(dir4);
+        tree.directories[1].size = 9;
+        tree.directories[2].size = 4;
+        let link1 = Link::new("/", "a");
+        let link2 = Link::new("/", "b");
+        let link3 = Link::new("b", "c");
+        tree.links.push(link1);
+        tree.links.push(link2);
+        tree.links.push(link3);
+        dbg!(&tree);
+        assert_eq!(tree.get_sub_directories_size("/"), 9 + 4);
+    }
+
+    #[test]
+    fn test_directory_get_max_level() {
+        let mut tree = Tree::new();
+        let dir1 = Directory::new("/", 0);
+        let dir2 = Directory::new("a", 1);
+        let dir3 = Directory::new("b", 2);
+        let dir4 = Directory::new("c", 3);
+        let dir5 = Directory::new("d", 3);
+        tree.directories.push(dir1);
+        tree.directories.push(dir2);
+        tree.directories.push(dir3);
+        tree.directories.push(dir4);
+        tree.directories.push(dir5);
+        dbg!(&tree);
+        assert_eq!(tree.get_max_level(), 3);
+    }
+
+    #[test]
+    fn test_calculate_sizes() {
+        let mut tree = Tree::new();
+        let dir1 = Directory::new("/", 0);
+        let dir2 = Directory::new("a", 1);
+        let dir3 = Directory::new("b", 1);
+        let dir4 = Directory::new("c", 2);
+        tree.directories.push(dir1);
+        tree.directories.push(dir2);
+        tree.directories.push(dir3);
+        tree.directories.push(dir4);
+        tree.add_file("a", File::new("truc.txt", 12000));
+        tree.add_file("a", File::new("truc2.txt", 100));
+        tree.add_file("b", File::new("machin.txt", 10000));
+        tree.add_file("c", File::new("c_machin.txt", 1000));
+        tree.add_file("c", File::new("c_machin2.txt", 2000));
+        let link1 = Link::new("/", "a");
+        let link2 = Link::new("/", "b");
+        let link3 = Link::new("b", "c");
+        tree.links.push(link1);
+        tree.links.push(link2);
+        tree.links.push(link3);
+        tree.calculate_sizes();
+        dbg!(&tree);
+        assert_eq!(tree.directories[3].size, 2000 + 1000);
+        assert_eq!(tree.directories[2].size, 10000 + 2000 + 1000);
+        assert_eq!(tree.directories[1].size, 12000 + 100);
+        assert_eq!(tree.directories[0].size, 13000 + 12100);
+    }
+
+    #[test]
     fn test_parse_line_root() {
         let mut tree = Tree::new();
         let mut current_dir = String::new();
@@ -289,14 +400,14 @@ mod tests {
         assert_eq!(
             tree.directories[1],
             Directory {
-                name: "a".to_string(),
+                name: "//a".to_string(),
                 level: 1,
                 files: Vec::new(),
                 size: 0
             }
         );
 
-        assert_eq!(tree.links[0], Link("/".to_string(), "a".to_string()));
+        assert_eq!(tree.links[0], Link("/".to_string(), "//a".to_string()));
     }
 
     #[test]
@@ -325,15 +436,15 @@ mod tests {
         assert_eq!(
             tree.directories[1],
             Directory {
-                name: "a".to_string(),
+                name: "//a".to_string(),
                 level: 1,
                 files: Vec::new(),
                 size: 0
             }
         );
 
-        assert_eq!(tree.links[0], Link("/".to_string(), "a".to_string()));
-        assert_eq!(current_dir, "a".to_string());
+        assert_eq!(tree.links[0], Link("/".to_string(), "//a".to_string()));
+        assert_eq!(current_dir, "//a".to_string());
         assert_eq!(current_level, 1);
     }
 
@@ -365,14 +476,14 @@ mod tests {
         assert_eq!(
             tree.directories[1],
             Directory {
-                name: "a".to_string(),
+                name: "//a".to_string(),
                 level: 1,
                 files: Vec::new(),
                 size: 0
             }
         );
 
-        assert_eq!(tree.links[0], Link("/".to_string(), "a".to_string()));
+        assert_eq!(tree.links[0], Link("/".to_string(), "//a".to_string()));
         assert_eq!(current_dir, "/".to_string());
         assert_eq!(current_level, 0);
     }
@@ -414,15 +525,15 @@ mod tests {
         assert_eq!(
             tree.directories[1],
             Directory {
-                name: "a".to_string(),
+                name: "//a".to_string(),
                 level: 1,
                 files: Vec::new(),
                 size: 0
             }
         );
 
-        assert_eq!(tree.links[0], Link("/".to_string(), "a".to_string()));
-        assert_eq!(tree.links[1], Link("a".to_string(), "b".to_string()));
+        assert_eq!(tree.links[0], Link("/".to_string(), "//a".to_string()));
+        assert_eq!(tree.links[1], Link("//a".to_string(), "//a/b".to_string()));
         assert_eq!(current_dir, "/".to_string());
         assert_eq!(current_level, 0);
     }
