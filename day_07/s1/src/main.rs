@@ -72,23 +72,25 @@ impl Tree {
     }
 
     fn calculate_level_sizes(&mut self, level: usize) {
-        let mut dir_subdir_size: Vec<(usize, usize)> = Vec::new();
-        for dir in self.directories.iter_mut().filter(|o| o.level == level) {
-            dir.calculate_file_size();
-        }
+        // For a specific level, get a list of (directory index, subdirectories_size)
+        type DirIndex = usize;
+        type SubdirSize = usize;
+        let dir_subdir_size: Vec<(DirIndex, SubdirSize)> = self
+            .directories
+            .iter()
+            .enumerate()
+            .filter(|o| o.1.level == level)
+            .map(|o| (o.0, self.get_sub_directories_size(&o.1.name)))
+            .collect();
 
-        for dir in self.directories.iter().filter(|o| o.level == level) {
-            let subdir_size = self.get_sub_directories_size(&dir.name);
-            let dir_index = self.get_dir_index(&dir.name);
-            dir_subdir_size.push((dir_index, subdir_size));
-        }
-
-        for item in dir_subdir_size {
-            self.directories[item.0].size += item.1;
+        for (dir_index, subdir_size) in dir_subdir_size {
+            self.directories[dir_index].calculate_file_size();
+            self.directories[dir_index].size += subdir_size;
         }
     }
 
     fn calculate_sizes(&mut self) {
+        // Calculate size from deepest level to /
         let max_level = self.get_max_level();
         for level in (0..=max_level).rev() {
             self.calculate_level_sizes(level);
