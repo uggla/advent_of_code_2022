@@ -76,6 +76,77 @@ fn parse_line(input: Vec<String>) -> Vec<Move> {
     moves
 }
 
+fn shift_refactor(
+    head: &mut Location,
+    tail: &mut Location,
+    direction: &Move,
+    tail_visited: &mut HashSet<(X, Y)>,
+) {
+    const LENGTH: u32 = 1;
+    match direction {
+        Move::Up(t2) => {
+            for _ in 0..*t2 {
+                head.up();
+                if distance(head, tail) > LENGTH.try_into().unwrap() {
+                    if head.x < tail.x {
+                        tail.left();
+                    }
+                    if head.x > tail.x {
+                        tail.right();
+                    }
+                    tail.up();
+                    tail_visited.insert((tail.x, tail.y));
+                }
+            }
+        }
+        Move::Down(t2) => {
+            for _ in 0..*t2 {
+                head.down();
+                if distance(head, tail) > LENGTH.try_into().unwrap() {
+                    if head.x < tail.x {
+                        tail.left();
+                    }
+                    if head.x > tail.x {
+                        tail.right();
+                    }
+                    tail.down();
+                    tail_visited.insert((tail.x, tail.y));
+                }
+            }
+        }
+        Move::Right(t2) => {
+            for _ in 0..*t2 {
+                head.right();
+                if distance(head, tail) > LENGTH.try_into().unwrap() {
+                    if head.y < tail.y {
+                        tail.down();
+                    }
+                    if head.y > tail.y {
+                        tail.up();
+                    }
+                    tail.right();
+                    tail_visited.insert((tail.x, tail.y));
+                }
+            }
+        }
+        Move::Left(t2) => {
+            for _ in 0..*t2 {
+                head.left();
+                if distance(head, tail) > LENGTH.try_into().unwrap() {
+                    if head.y < tail.y {
+                        tail.down();
+                    }
+                    if head.y > tail.y {
+                        tail.up();
+                    }
+                    tail.left();
+                    tail_visited.insert((tail.x, tail.y));
+                }
+            }
+        }
+    }
+}
+
 fn shift(
     head: &mut Location,
     tail: &mut Location,
@@ -83,225 +154,226 @@ fn shift(
     prev_direction: &mut Move,
     tail_visited: &mut HashSet<(X, Y)>,
 ) {
-    const LENGTH: u32 = 1;
-    match (prev_direction, direction) {
-        (Move::Up(_), Move::Up(t2)) => {
-            for _ in 0..*t2 {
-                head.up();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.x < tail.x {
-                        tail.left();
-                    }
-                    if head.x > tail.x {
-                        tail.right();
-                    }
-                    tail.up();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Up(_), Move::Down(t2)) => {
-            for _ in 0..*t2 {
-                head.down();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.x < tail.x {
-                        tail.left();
-                    }
-                    if head.x > tail.x {
-                        tail.right();
-                    }
-                    tail.down();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Up(_), Move::Left(t2)) => {
-            for _ in 0..*t2 {
-                head.left();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.y != tail.y {
-                        tail.up();
-                    }
-                    tail.left();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Up(_), Move::Right(t2)) => {
-            for _ in 0..*t2 {
-                head.right();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.y != tail.y {
-                        tail.up();
-                    }
-                    tail.right();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Down(_), Move::Up(t2)) => {
-            for _ in 0..*t2 {
-                head.up();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.x < tail.x {
-                        tail.left();
-                    }
-                    if head.x > tail.x {
-                        tail.right();
-                    }
-                    tail.up();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Down(_), Move::Down(t2)) => {
-            for _ in 0..*t2 {
-                head.down();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.x < tail.x {
-                        tail.left();
-                    }
-                    if head.x > tail.x {
-                        tail.right();
-                    }
-                    tail.down();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Down(_), Move::Left(t2)) => {
-            for _ in 0..*t2 {
-                head.left();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.y != tail.y {
-                        tail.down();
-                    }
-                    tail.left();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Down(_), Move::Right(t2)) => {
-            for _ in 0..*t2 {
-                head.right();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.y != tail.y {
-                        tail.down();
-                    }
-                    tail.right();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Left(_), Move::Up(t2)) => {
-            for _ in 0..*t2 {
-                head.up();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.x != tail.x {
-                        tail.left();
-                    }
-                    tail.up();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Left(_), Move::Down(t2)) => {
-            for _ in 0..*t2 {
-                head.down();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.x != tail.x {
-                        tail.left();
-                    }
-                    tail.down();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Left(_), Move::Left(t2)) => {
-            for _ in 0..*t2 {
-                head.left();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.y < tail.y {
-                        tail.down();
-                    }
-                    if head.y > tail.y {
-                        tail.up();
-                    }
-                    tail.left();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Left(_), Move::Right(t2)) => {
-            for _ in 0..*t2 {
-                head.right();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.y < tail.y {
-                        tail.down();
-                    }
-                    if head.y > tail.y {
-                        tail.up();
-                    }
-                    tail.right();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Right(_), Move::Up(t2)) => {
-            for _ in 0..*t2 {
-                head.up();
-                if dbg!(distance(head, tail)) > LENGTH.try_into().unwrap() {
-                    if head.x != tail.x {
-                        tail.right();
-                    }
-                    tail.up();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Right(_), Move::Down(t2)) => {
-            for _ in 0..*t2 {
-                head.down();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.x != tail.x {
-                        tail.right();
-                    }
-                    tail.down();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Right(_), Move::Left(t2)) => {
-            for _ in 0..*t2 {
-                head.left();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.y < tail.y {
-                        tail.down();
-                    }
-                    if head.y > tail.y {
-                        tail.up();
-                    }
-                    tail.left();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-        (Move::Right(_), Move::Right(t2)) => {
-            for _ in 0..*t2 {
-                head.right();
-                if distance(head, tail) > LENGTH.try_into().unwrap() {
-                    if head.y < tail.y {
-                        tail.down();
-                    }
-                    if head.y > tail.y {
-                        tail.up();
-                    }
-                    tail.right();
-                    tail_visited.insert((tail.x, tail.y));
-                }
-            }
-        }
-    }
+    shift_refactor(head, tail, direction, tail_visited)
+    // const LENGTH: u32 = 1;
+    // match (prev_direction, direction) {
+    //     (Move::Up(_), Move::Up(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.up();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.x < tail.x {
+    //                     tail.left();
+    //                 }
+    //                 if head.x > tail.x {
+    //                     tail.right();
+    //                 }
+    //                 tail.up();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Up(_), Move::Down(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.down();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.x < tail.x {
+    //                     tail.left();
+    //                 }
+    //                 if head.x > tail.x {
+    //                     tail.right();
+    //                 }
+    //                 tail.down();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Up(_), Move::Left(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.left();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.y != tail.y {
+    //                     tail.up();
+    //                 }
+    //                 tail.left();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Up(_), Move::Right(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.right();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.y != tail.y {
+    //                     tail.up();
+    //                 }
+    //                 tail.right();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Down(_), Move::Up(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.up();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.x < tail.x {
+    //                     tail.left();
+    //                 }
+    //                 if head.x > tail.x {
+    //                     tail.right();
+    //                 }
+    //                 tail.up();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Down(_), Move::Down(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.down();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.x < tail.x {
+    //                     tail.left();
+    //                 }
+    //                 if head.x > tail.x {
+    //                     tail.right();
+    //                 }
+    //                 tail.down();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Down(_), Move::Left(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.left();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.y != tail.y {
+    //                     tail.down();
+    //                 }
+    //                 tail.left();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Down(_), Move::Right(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.right();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.y != tail.y {
+    //                     tail.down();
+    //                 }
+    //                 tail.right();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Left(_), Move::Up(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.up();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.x != tail.x {
+    //                     tail.left();
+    //                 }
+    //                 tail.up();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Left(_), Move::Down(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.down();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.x != tail.x {
+    //                     tail.left();
+    //                 }
+    //                 tail.down();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Left(_), Move::Left(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.left();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.y < tail.y {
+    //                     tail.down();
+    //                 }
+    //                 if head.y > tail.y {
+    //                     tail.up();
+    //                 }
+    //                 tail.left();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Left(_), Move::Right(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.right();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.y < tail.y {
+    //                     tail.down();
+    //                 }
+    //                 if head.y > tail.y {
+    //                     tail.up();
+    //                 }
+    //                 tail.right();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Right(_), Move::Up(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.up();
+    //             if dbg!(distance(head, tail)) > LENGTH.try_into().unwrap() {
+    //                 if head.x != tail.x {
+    //                     tail.right();
+    //                 }
+    //                 tail.up();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Right(_), Move::Down(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.down();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.x != tail.x {
+    //                     tail.right();
+    //                 }
+    //                 tail.down();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Right(_), Move::Left(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.left();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.y < tail.y {
+    //                     tail.down();
+    //                 }
+    //                 if head.y > tail.y {
+    //                     tail.up();
+    //                 }
+    //                 tail.left();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    //     (Move::Right(_), Move::Right(t2)) => {
+    //         for _ in 0..*t2 {
+    //             head.right();
+    //             if distance(head, tail) > LENGTH.try_into().unwrap() {
+    //                 if head.y < tail.y {
+    //                     tail.down();
+    //                 }
+    //                 if head.y > tail.y {
+    //                     tail.up();
+    //                 }
+    //                 tail.right();
+    //                 tail_visited.insert((tail.x, tail.y));
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 fn distance(item1: &Location, item2: &Location) -> isize {
