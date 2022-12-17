@@ -95,7 +95,7 @@ enum Cell {
     Elevation(isize),
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Coord {
     x: isize,
     y: isize,
@@ -193,20 +193,26 @@ fn run(input: Vec<String>) -> usize {
         }
     }
 
-    dbg!(&edges);
+    // dbg!(&edges);
+    // let truc = edges
+    //     .iter()
+    //     .map(|o| (o.0, o.1))
+    //     .map(|(ori, dst)| ((ori.x, ori.y), (dst.x, dst.y)))
+    //     .collect::<Vec<((isize, isize), (isize, isize))>>();
+
     let truc = edges
         .iter()
         .map(|o| (o.0, o.1))
-        .map(|(ori, dst)| ((ori.x, ori.y), (dst.x, dst.y)))
-        .collect::<Vec<((isize, isize), (isize, isize))>>();
+        // .map(|(ori, dst)| ((ori.x, ori.y), (dst.x, dst.y)))
+        .collect::<Vec<(Coord, Coord)>>();
     //
     dbg!(&truc);
-    let g = DiGraphMap::<(isize, isize), ()>::from_edges(&truc);
+    let g = DiGraphMap::<Coord, ()>::from_edges(&truc);
     println!("{:?}", Dot::new(&g));
 
-    let res = dijkstra(&g, (start.x, start.y), Some((end.x, end.y)), |_| 1);
-    dbg!(res[&(end.x, end.y)]);
-    res[&(end.x, end.y)]
+    let res = dijkstra(&g, start, Some(end), |_| 1);
+    dbg!(res[&end]);
+    res[&end]
     // todo!();
 }
 
@@ -246,3 +252,32 @@ mod tests {
         assert_eq!(answer, 31);
     }
 }
+//
+//
+// use petgraph::Graph;
+//
+// fn main() {
+//     // Create an empty graph
+//     let mut graph = Graph::new();
+//
+//     // Create a list of nodes to insert into the graph
+//     let nodes = vec!["A", "B", "C", "D", "E"];
+//
+//     // Insert the nodes into the graph
+//     for node in nodes {
+//         graph.add_node(node);
+//     }
+//
+//     // Add some edges to the graph
+//     let node_a_index = graph.node_indices().find(|&i| graph[i] == "A").unwrap();
+//     let node_b_index = graph.node_indices().find(|&i| graph[i] == "B").unwrap();
+//     let node_c_index = graph.node_indices().find(|&i| graph[i] == "C").unwrap();
+//     let node_d_index = graph.node_indices().find(|&i| graph[i] == "D").unwrap();
+//     let node_e_index = graph.node_indices().find(|&i| graph[i] == "E").unwrap();
+//
+//     graph.add_edge(node_a_index, node_b_index, ());
+//     graph.add_edge(node_b_index, node_c_index, ());
+//     graph.add_edge(node_c_index, node_d_index, ());
+//     graph.add_edge(node_d_index, node_e_index, ());
+// }
+//
