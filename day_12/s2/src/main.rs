@@ -189,11 +189,26 @@ fn run(input: Vec<String>) -> usize {
         }
     }
 
-    let g = DiGraphMap::<Coord, ()>::from_edges(edges);
+    let g = DiGraphMap::<Coord, ()>::from_edges(edges.iter().map(|(a, b)| (*b, *a)));
     println!("{:?}", Dot::new(&g));
 
-    let res = dijkstra(&g, start, Some(end), |_| 1);
-    res[&end]
+    let res = dijkstra(&g, end, None, |_| 1);
+    dbg!(&res);
+
+    let distances_from_end_to_cell_elev_0 = res
+        .iter()
+        .filter_map(
+            |(coord, dist)| match map.get_cell((coord.x, coord.y).into()) {
+                Some(Cell::Elevation(0)) => Some(dist),
+                Some(_) => None,
+                None => None,
+            },
+        )
+        .collect::<Vec<&usize>>();
+
+    dbg!(&distances_from_end_to_cell_elev_0);
+
+    **distances_from_end_to_cell_elev_0.iter().min().unwrap()
 }
 
 fn main() {
@@ -229,6 +244,6 @@ mod tests {
         )));
         dbg!(&input);
         let answer = run(input);
-        assert_eq!(answer, 31);
+        assert_eq!(answer, 29);
     }
 }
