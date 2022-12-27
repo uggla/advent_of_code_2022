@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use core::fmt;
 use core::fmt::Debug;
 use std::collections::HashSet;
@@ -63,6 +64,21 @@ impl Map {
         if !self.bound(&coord) {
             return None;
         }
+        if value == Cell::Signal {
+            match self.data[coord.y as usize * self.width + coord.x as usize] {
+                Cell::Nosignal => {
+                    self.data[coord.y as usize * self.width + coord.x as usize] = value;
+                    return Some(());
+                }
+                Cell::Signal => return Some(()),
+                Cell::Beacon => return Some(()),
+                Cell::Sensor => return Some(()),
+                Cell::Origin => {
+                    self.data[coord.y as usize * self.width + coord.x as usize] = value;
+                    return Some(());
+                }
+            };
+        }
         self.data[coord.y as usize * self.width + coord.x as usize] = value;
         Some(())
     }
@@ -82,6 +98,7 @@ impl Debug for Map {
                     Cell::Nosignal => '.',
                     Cell::Sensor => 'S',
                     Cell::Beacon => 'B',
+                    Cell::Origin => '*',
                 };
                 line.push(c.to_string());
             }
@@ -92,12 +109,13 @@ impl Debug for Map {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Cell {
     Signal,
     Nosignal,
     Sensor,
     Beacon,
+    Origin,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -130,6 +148,39 @@ struct Sensor {
     beacon_cell: Coord,
 }
 
+impl Sensor {
+    fn get_covered_cell(&self) -> Vec<Coord> {
+        let mut res: Vec<Coord> = Vec::new();
+        let mdist = self.cell.mdist(&self.beacon_cell);
+        for y in self.cell.y - mdist as isize..=self.cell.y + mdist as isize {
+            for x in self.cell.x - mdist as isize..=self.cell.x + mdist as isize {
+                let current_cell = Coord::new(x, y);
+                if current_cell.mdist(&self.cell) <= mdist {
+                    res.push(current_cell);
+                }
+            }
+        }
+
+        res
+    }
+
+    fn get_covered_cell_y(&self, y_to_find: isize) -> Vec<Coord> {
+        let mut res: Vec<Coord> = Vec::new();
+        let mdist = self.cell.mdist(&self.beacon_cell);
+
+        if (self.cell.y - mdist as isize..=self.cell.y + mdist as isize).contains(&y_to_find) {
+            for x in self.cell.x - mdist as isize..=self.cell.x + mdist as isize {
+                let current_cell = Coord::new(x, y_to_find);
+                if current_cell.mdist(&self.cell) <= mdist {
+                    res.push(current_cell);
+                }
+            }
+        }
+
+        res
+    }
+}
+
 fn parse_line(line: String) -> Sensor {
     let line_csv = line
         .replace("Sensor at x=", "")
@@ -153,10 +204,16 @@ fn parse_line(line: String) -> Sensor {
 }
 
 fn get_min_max_coord(sensors: &[Sensor]) -> (isize, isize, isize, isize) {
-    let mut max_x = sensors.iter().map(|sensor| sensor.cell.x).max().unwrap();
-    let mut min_x = sensors.iter().map(|sensor| sensor.cell.x).min().unwrap();
-    let mut max_y = sensors.iter().map(|sensor| sensor.cell.y).max().unwrap();
-    let mut min_y = sensors.iter().map(|sensor| sensor.cell.y).min().unwrap();
+    let mdist = sensors
+        .iter()
+        .map(|sensor| sensor.cell.mdist(&sensor.beacon_cell))
+        .max()
+        .unwrap();
+    dbg!(mdist);
+    let mut max_x = sensors.iter().map(|sensor| sensor.cell.x).max().unwrap() + mdist as isize;
+    let mut min_x = sensors.iter().map(|sensor| sensor.cell.x).min().unwrap() - mdist as isize;
+    let mut max_y = sensors.iter().map(|sensor| sensor.cell.y).max().unwrap() + mdist as isize;
+    let mut min_y = sensors.iter().map(|sensor| sensor.cell.y).min().unwrap() - mdist as isize;
     let bmax_x = sensors
         .iter()
         .map(|sensor| sensor.beacon_cell.x)
@@ -213,48 +270,62 @@ impl Wrapper {
     }
 }
 
-fn run(input: Vec<String>) -> usize {
+fn run(input: Vec<String>, y_to_find: isize) -> usize {
     let sensors: Vec<Sensor> = input
         .iter()
         .map(|line| parse_line(line.to_string()))
         .collect();
 
-    dbg!(&sensors);
-    let min_max = dbg!(get_min_max_coord(&sensors));
+    // Uncomment folowing block and comment next one then
+    // run cargo test to display map
 
+    // let min_max = dbg!(get_min_max_coord(&sensors));
     //
-    // let max_y = rocks
-    //     .iter()
-    //     .flat_map(|p| &p.points)
-    //     .map(|c| c.y)
-    //     .max()
+    // let mut map = Map::new(
+    //     (min_max.1 - min_max.0) as usize + 1,
+    //     (min_max.3 - min_max.2) as usize + 1,
+    // );
+    //
+    // let wrapper = Wrapper::new(min_max.0, min_max.2);
+    // // Place sensor and beacons
+    // for sensor in &sensors {
+    //     map.write_cell(wrapper.wrap(sensor.cell), Cell::Sensor)
+    //         .unwrap();
+    //     map.write_cell(wrapper.wrap(sensor.beacon_cell), Cell::Beacon)
+    //         .unwrap();
+    // }
+    //
+    // let c = &sensors[6].get_covered_cell();
+    // for cell in c {
+    //     map.write_cell(wrapper.wrap(*cell), Cell::Signal).unwrap();
+    // }
+    //
+    // map.write_cell(wrapper.wrap((0, 0).into()), Cell::Origin)
     //     .unwrap();
-    //
-    // dbg!(&max_x, &max_y);
+    // dbg!(&map);
+    // todo!();
 
-    let mut map = Map::new(
-        (min_max.1 - min_max.0) as usize + 1,
-        (min_max.3 - min_max.2) as usize + 1,
-    );
+    let truc = sensors
+        .iter()
+        .flat_map(|sensor| {
+            let mut covered = sensor.get_covered_cell_y(y_to_find);
+            if sensor.cell.y == y_to_find {
+                covered.push(sensor.cell);
+            }
+            if sensor.beacon_cell.y == y_to_find {
+                covered.push(sensor.beacon_cell);
+            }
+            covered
+        })
+        .collect::<HashSet<Coord>>();
 
-    let wrapper = Wrapper::new(min_max.0, min_max.2);
-    dbg!(&wrapper);
-    // Place sensor and beacons
-    for sensor in sensors {
-        map.write_cell(wrapper.wrap(sensor.cell), Cell::Sensor)
-            .unwrap();
-        map.write_cell(wrapper.wrap(sensor.beacon_cell), Cell::Beacon)
-            .unwrap();
-    }
-    dbg!(&map);
-
-    todo!();
+    dbg!(&truc.len() - 1)
 }
 
 fn main() {
     let input = parse_input(None);
 
-    let answer = run(input);
+    let answer = run(input, 2000000);
 
     println!("Answer: {}", answer);
 }
@@ -310,7 +381,7 @@ mod tests {
             "
         )));
         dbg!(&input);
-        let answer = run(input);
-        assert_eq!(answer, 24);
+        let answer = run(input, 10);
+        assert_eq!(answer, 26);
     }
 }
