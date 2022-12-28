@@ -288,7 +288,7 @@ impl Wrapper {
     }
 }
 
-fn run(input: Vec<String>, y_to_find: isize) -> usize {
+fn run(input: Vec<String>) -> usize {
     let sensors: Vec<Sensor> = input
         .iter()
         .map(|line| parse_line(line.to_string()))
@@ -322,47 +322,47 @@ fn run(input: Vec<String>, y_to_find: isize) -> usize {
     //     .unwrap();
     // dbg!(&map);
     // todo!();
+    #[allow(unused_assignments)]
+    let mut res_x_cell_ranges: Vec<(isize, isize)> = Vec::new();
+    let mut y_to_find = 0;
+    loop {
+        // dbg!(y_to_find);
+        let mut x_cell_ranges = sensors
+            .iter()
+            .flat_map(|sensor| {
+                let mut covered = Vec::new();
+                if let Some(cells) = sensor.get_covered_cell_y_range(y_to_find) {
+                    covered.push(cells);
+                };
 
-    let mut x_cell_ranges = sensors
-        .iter()
-        .flat_map(|sensor| {
-            let mut covered = Vec::new();
-            if let Some(cells) = sensor.get_covered_cell_y_range(y_to_find) {
-                covered.push(cells);
-            };
+                if sensor.cell.y == y_to_find {
+                    covered.push((sensor.cell.x, sensor.cell.x));
+                }
+                if sensor.beacon_cell.y == y_to_find {
+                    covered.push((sensor.beacon_cell.x, sensor.beacon_cell.x));
+                }
+                covered
+            })
+            .collect::<Vec<(isize, isize)>>();
 
-            if sensor.cell.y == y_to_find {
-                covered.push((sensor.cell.x, sensor.cell.x));
-            }
-            if sensor.beacon_cell.y == y_to_find {
-                covered.push((sensor.beacon_cell.x, sensor.beacon_cell.x));
-            }
-            covered
-        })
-        .collect::<Vec<(isize, isize)>>();
-
-    let x_cell_ranges = merge_ranges(&mut x_cell_ranges);
-
-    // let
-    dbg!(&x_cell_ranges);
-    if x_cell_ranges.len() == 1 {
-        (x_cell_ranges[0].1 - x_cell_ranges[0].0)
-            .try_into()
-            .unwrap()
-    } else {
-        panic!("Non contigus")
+        res_x_cell_ranges = merge_ranges(&mut x_cell_ranges);
+        if res_x_cell_ranges.len() > 1 {
+            break;
+        }
+        y_to_find += 1;
     }
+    dbg!(&res_x_cell_ranges);
+    let x_to_find = res_x_cell_ranges[0].1 + 1;
+    (x_to_find * 4000000 + y_to_find).try_into().unwrap()
 }
 
 fn merge_ranges(ranges: &mut [(isize, isize)]) -> Vec<(isize, isize)> {
     ranges.sort();
-    dbg!(&ranges);
     let mut res: Vec<(isize, isize)> = Vec::new();
     let mut start = ranges[0].0;
     let mut end = ranges[0].1;
 
     for range_index in 0..ranges.len() - 1 {
-        dbg!(start, end);
         if end >= ranges[range_index + 1].0 {
             if end >= ranges[range_index + 1].1 {
                 // Included
@@ -389,7 +389,7 @@ fn merge_ranges(ranges: &mut [(isize, isize)]) -> Vec<(isize, isize)> {
 fn main() {
     let input = parse_input(None);
 
-    let answer = run(input, 2000000);
+    let answer = run(input);
 
     println!("Answer: {}", answer);
 }
@@ -462,7 +462,7 @@ mod tests {
             "
         )));
         dbg!(&input);
-        let answer = run(input, 10);
-        assert_eq!(answer, 26);
+        let answer = run(input);
+        assert_eq!(answer, 56000011);
     }
 }
