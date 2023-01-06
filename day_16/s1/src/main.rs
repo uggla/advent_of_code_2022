@@ -2,11 +2,11 @@ use itertools::Itertools;
 use petgraph::algo::dijkstra;
 use petgraph::dot::{Config, Dot};
 use petgraph::graphmap::GraphMap;
-use petgraph::{prelude::*, EdgeType};
-use std::collections::HashMap;
+use petgraph::prelude::*;
+use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fs::File;
-use std::hash::Hash;
 use std::io::Write;
 
 //#![allow(dead_code)]
@@ -25,7 +25,7 @@ fn parse_input(input: Option<&str>) -> Vec<String> {
     output
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 struct Valve {
     name: String,
     flow_rate: u32,
@@ -46,27 +46,27 @@ impl Valve {
     }
 }
 
-#[derive(Clone)]
-struct State<'a> {
-    graph: GraphMap<&'a str, (), Directed>,
+#[derive(Debug, Clone)]
+struct State {
     max_duration: u32,
     elapsed: u32,
     flow_rate: u32,
     released: u32,
     pos: String,
-    valves_to_open: Vec<Valve>,
+    valves_closed: Vec<Valve>,
+    valves_opened: Vec<Valve>,
 }
 
-impl<'a> State<'a> {
-    fn new(graph: GraphMap<&'a str, (), Directed>, valves_to_open: Vec<Valve>) -> Self {
+impl State {
+    fn new(valves_to_open: Vec<Valve>) -> Self {
         Self {
-            graph,
             max_duration: 30,
             elapsed: 1,
             flow_rate: 0,
             released: 0,
             pos: "AA".to_string(),
-            valves_to_open,
+            valves_closed: valves_to_open,
+            valves_opened: Vec::new(),
         }
     }
 
@@ -75,8 +75,8 @@ impl<'a> State<'a> {
         self.released += self.flow_rate;
     }
 
-    fn walk_and_open(&mut self, valve: &str) {
-        for _ in 0..self.distance(valve) {
+    fn walk_and_open(&mut self, valve: &str, dist: u32) {
+        for _ in 0..dist {
             self.next();
         }
         // One more to open
@@ -84,48 +84,32 @@ impl<'a> State<'a> {
         // Update state
         self.pos = valve.to_string();
         self.flow_rate += self
-            .valves_to_open
+            .valves_closed
             .iter()
             .find(|v| v.name == valve)
             .unwrap()
             .flow_rate;
-        self.valves_to_open.remove(
-            self.valves_to_open
+        let valve = self.valves_closed.remove(
+            self.valves_closed
                 .iter()
                 .position(|v| v.name == valve)
                 .unwrap(),
         );
+
+        self.valves_opened.push(valve);
     }
 
-    fn simul(&mut self, valve: &str) -> Option<(u32, String)> {
-        self.walk_and_open(valve);
-        dbg!(
-            &self.elapsed,
-            &self.flow_rate,
-            &self.released,
-            &self.pos,
-            &self.valves_to_open
-        );
-        if self.elapsed > self.max_duration {
-            None
-        } else {
+    fn run(&mut self, valve_dest: &str, valve_dist: u32) {
+        // check if we can do the move
+        // no we can not do the move so wait for time out.
+        if self.elapsed + valve_dist > self.max_duration {
             while self.elapsed <= self.max_duration {
                 self.next();
-                dbg!(&self.elapsed, &self.flow_rate, &self.released, &self.pos,);
             }
-            Some((self.released, valve.to_string()))
+        } else {
+            // yes we can do the move so apply it
+            self.walk_and_open(valve_dest, valve_dist);
         }
-    }
-
-    fn run(&mut self, valve: &str) -> u32 {
-        self.walk_and_open(valve);
-
-        todo!();
-    }
-
-    fn distance(&self, valve: &str) -> u32 {
-        let res = dijkstra(&self.graph, &self.pos, Some(valve), |_| 1);
-        res[valve]
     }
 }
 
@@ -156,7 +140,6 @@ fn run(input: Vec<String>) -> usize {
 
     // Build graph
     let mut graph: GraphMap<&str, (), Directed> = GraphMap::new();
-    graph.add_edge("BB", "AA", ());
 
     for valve in &valves {
         for tunnel in &valve.tunnels {
@@ -182,28 +165,72 @@ fn run(input: Vec<String>) -> usize {
         .map(|v| v.clone())
         .collect::<Vec<Valve>>();
 
-    dbg!(&valves_to_open);
-    let mut state = State::new(graph, valves_to_open.clone());
-    let sim = valves_to_open
-        .clone()
+    let mut simulations: VecDeque<State> = VecDeque::new();
+    let mut solutions: VecDeque<State> = VecDeque::new();
+    // let mut seen = HashSet::new();
+    let initial_state = State::new(valves_to_open.clone());
+
+    simulations.push_back(initial_state);
+
+    while !simulations.is_empty() {
+        let state = simulations.pop_front().unwrap();
+        // dbg!(&state);
+        // Which valves are the closest ?
+        let closest_valves = distance(&graph, &state.pos, &state.valves_closed);
+        // dbg!(&closest_valves);
+        for valve in &closest_valves {
+            // copy state
+            let mut new_state = state.clone();
+            // run simulation to get new state
+            new_state.run(&valve.0, valve.1);
+
+            // Are  we out of time ?
+            if new_state.elapsed > new_state.max_duration {
+                // Yes -> push state in solution
+                solutions.push_back(new_state);
+            } else {
+                // No -> push state in simulation to run a new one
+                // if seen.insert((
+                //     new_state.valves_opened.clone(),
+                //     new_state.elapsed,
+                //     new_state.released,
+                // )) {
+                simulations.push_back(new_state);
+                // }
+            }
+        }
+        // dbg!(&simulations);
+    }
+
+    // dbg!(&simulations);
+    // dbg!(&solutions);
+    let solution = solutions.iter().map(|s| s.released).max().unwrap();
+    dbg!(solution as usize)
+    // todo!();
+}
+
+fn distance(
+    graph: &GraphMap<&str, (), Directed>,
+    pos: &str,
+    valves_to_open: &Vec<Valve>,
+) -> Vec<(String, u32)> {
+    let dist = dijkstra(graph, pos, None, |_| 1);
+    let mut closest_valves: Vec<_> = valves_to_open
         .iter()
-        .map(|v| {
-            let mut state_clone = state.clone();
-            state_clone.simul(&v.name)
-        })
-        .collect::<Vec<Option<(u32, String)>>>();
-
-    dbg!(sim);
-
-    // let solutions = valve_names
-    //     .iter()
-    //     .permutations(valve_names.len())
-    //     .collect::<Vec<Vec<&String>>>();
-    //
-    // dbg!(&solutions.len());
-
-    // let res = dijkstra(&graph, "AA", None, |_| 1);
-    todo!();
+        .filter_map(|v| dist.get_key_value(&v.name.as_ref()))
+        .collect();
+    if closest_valves.is_empty() {
+        // There is no more valve to open return a valve really far
+        return vec![("WAIT".to_string(), 1000000)];
+    };
+    closest_valves.sort_by_key(|s| s.1);
+    // Keep only the shortest ones
+    // let shortest_val = closest_valves[0].1;
+    // closest_valves.retain(|v| v.1 == shortest_val);
+    closest_valves
+        .iter()
+        .map(|v| (v.0.to_string(), *v.1))
+        .collect()
 }
 
 fn main() {
